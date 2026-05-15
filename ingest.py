@@ -1,6 +1,6 @@
-from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, PyMuPDFLoader
+from langchain_community.document_loaders import DirectoryLoader, PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import GPT4AllEmbeddings
 from langchain_core.documents import Document
 from langchain_chroma import Chroma

@@ -14,7 +14,7 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.5-flash",
     temperature=0.3,
     google_api_key=api_key
 )
@@ -23,7 +23,7 @@ def ask(question: str, memory: ChatMemory) -> Tuple[str, Document]:
     search_query = question
     if not memory.is_empty():
         rephrase_prompt = f"Given the following conversation history and the user's new question, rephrase the new question into a standalone question that can be used to search for relevant information. If the new question is already standalone, just return it as is.\n\nHistory: {memory.get_history()}\n\nNew Question: {question}\n\nStandalone Question:"
-        search_query = llm.invoke(HumanMessage(content=rephrase_prompt)).content.strip()
+        search_query = llm.invoke([HumanMessage(content=rephrase_prompt)]).content.strip()
 
     docs = retrieve_chunks(query=search_query)
     context = "\n\n".join(
@@ -64,7 +64,10 @@ if __name__ == "__main__":
     print("ML/DL Tutor. Commands: 'clear' or 'c' to reset memory, 'q' or 'quit' or 'exit' to quit.\n")
     while True:
         query = input("User: ")
+        if not query:
+            continue
         if query.lower in ['q', "quit", "exit"]:
+            print("BYE")
             break
         if query.lower in ['c', "clear"]:
             memory.clear()

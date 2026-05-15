@@ -1,7 +1,10 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage, SystemMessage
 
 import os
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 from retriever import retrieve_chunks
 from config import Config
@@ -16,28 +19,31 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=api_key
 )
 
+def ask(question: str, memory: ChatMemory) -> Tuple[str, Document]:
+    search_query = question
+    if not memory.is_empty():
+        rephrase_prompt = f"Given the following conversation history and the user's new question, rephrase the new question into a standalone question that can be used to search for relevant information. If the new question is already standalone, just return it as is.\n\nHistory: {memory.get_history()}\n\nNew Question: {question}\n\nStandalone Question:"
+        search_query = llm.invoke(HumanMessage(content=rephrase_prompt)).content.strip()
 
-def ask(question: str, memory) -> str:
-    docs = retrieve_chunks(question)
-
+    docs = retrieve_chunks(query=search_query)
     context = "\n\n".join(
         [doc[0].page_content for doc in docs]
     )
-    # print(context)
-    history = memory.format_for_prompt()
 
-    prompt = Config.SYSTEM_PROMPT.format(
-        context=context,
-        history=history,
-        question=question
-    )
+    message = [
+        SystemMessage(content=Config.SYSTEM_PROMPT.format(context=context))
+    ]
 
-    response = llm.invoke(prompt)
+    message.extend(memory.get_history())
+    message.append(HumanMessage(content=question))
 
-    memory.add(role="user", content=question)
-    memory.add(role="assistant", content=response)
+    response = llm.invoke(message)
+    answer = response.content
 
-    return response.content
+    memory.add_user_message(question)
+    memory.add_ai_message(answer)
+
+    return answer, docs
 
 
 def show_sources(docs) -> None:
@@ -55,24 +61,19 @@ def show_sources(docs) -> None:
 
 if __name__ == "__main__":
     memory = ChatMemory()
-    print("ML/DL Tutor (with memory). Commands: 'clear' to reset, 'q' to quit.\n")
- 
+    print("ML/DL Tutor. Commands: 'clear' or 'c' to reset memory, 'q' or 'quit' or 'exit' to quit.\n")
     while True:
-        query = input("User: ").strip()
- 
-        if not query:
-            continue
-        if query.lower() in ["q", "quit", "exit", "Q"]:
+        query = input("User: ")
+        if query.lower in ['q', "quit", "exit"]:
             break
-        if query.lower() == "clear":
+        if query.lower in ['c', "clear"]:
             memory.clear()
             print("Memory cleared.\n")
             continue
- 
-        answer = ask(question=query, memory=memory)
-        print(f"\nBot: {answer}\n")
- 
-        # Optional: show which book pages were used
-        docs = retrieve_chunks(query)
+
+        answer, docs = ask(question=query, memory=memory)
+        print(f"Bot: {answer}")
+
         show_sources(docs)
         print()
+

@@ -10,9 +10,9 @@ embedding_model = GPT4AllEmbeddings(
 
 
 # retriever = db.as_retriever(search_kwargs={"k":4})
+db = Chroma(persist_directory=Config.CHROMA_PATH, embedding_function=embedding_model)
 
 def retrieve_chunks(query: str):
-    db = Chroma(persist_directory=Config.CHROMA_PATH, embedding_function=embedding_model)
     docs = db.similarity_search_with_score(
     query,
     k=4)
